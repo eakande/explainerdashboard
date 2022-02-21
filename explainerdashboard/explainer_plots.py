@@ -1671,31 +1671,61 @@ def plotly_predicted_vs_actual(y, preds, target="" , units="", round=2,
         Plotly fig
     """
     
+    value_map = {}
+    predicted_values = []
+    actual_values = []
+    
     if idxs is not None:
         assert len(idxs)==len(preds)
-        idxs = [str(idx) for idx in idxs]
-    else:
-        idxs = [str(i) for i in range(len(preds))]
+        temp_idxs = [int(idx_value) for idx_value in idxs]
+        temp_idxs.sort()
         
-    marker_text=[f"{index_name}: {idx}<br>Observed: {actual:.{round}f}<br>Prediction: {pred:.{round}f}" 
-                  for idx, actual, pred in zip(idxs, y, preds)] 
+        sorted_idxs = [str(temp_idx_value) for temp_idx_value in temp_idxs]
+    else:
+        idxs = list(range(len(preds)))
+        sorted_idxs = idxs
+        
+    # Map each actual, predicted to its index (series value)
+    for i in range(len(idxs)):
+        idx_value = idxs[i]
+        actual_value = y[i]
+        pred_value = preds[i]
+        
+        value_map[idx_value] = (pred_value, actual_value)
+        
+    for index in sorted_idxs:
+        idx_predicted_val, idx_actual_val = value_map[index]
+        predicted_values.append(idx_predicted_val)
+        actual_values.append(idx_actual_val)
+        
+    observed_marker_text=[
+        f"({idx}, {actual:.{round}f})" 
+        for idx, actual in zip(sorted_idxs, actual_values)
+    ] 
+    
+        
+    predicted_marker_text=[
+        f"({idx}, {pred:.{round}f})"
+        for idx, pred in zip(sorted_idxs, predicted_values)
+    ] 
     
     trace0 = go.Scattergl(
-        x = y,
-        y = preds,
-        mode='markers', 
-        name=f'predicted {target}' + f" ({units})" if units else "",
-        text=marker_text,
+        x = sorted_idxs,
+        y = predicted_values,
+        mode='lines', 
+        name=f'predicted {target}' + f" ({units})" if units else "Predicted",
+        text=predicted_marker_text,
         hoverinfo="text",
     )
     
     sorted_y = np.sort(y)
     trace1 = go.Scattergl(
-        x = sorted_y,
-        y = sorted_y,
+        x = sorted_idxs,
+        y = actual_values,
         mode='lines', 
-        name=f"observed {target}" + f" ({units})" if units else "",
-        hoverinfo="none",
+        name=f"observed {target}" + f" ({units})" if units else "Observed",
+        text=observed_marker_text,
+        hoverinfo="text",
     )
     
     data = [trace0, trace1]
@@ -1710,11 +1740,11 @@ def plotly_predicted_vs_actual(y, preds, target="" , units="", round=2,
     
     fig = go.Figure(data, layout)
     if logs:
-        fig.update_layout(xaxis_type='log', yaxis_type='log')
+         fig.update_layout(xaxis_type='log', yaxis_type='log')
     if log_x:
         fig.update_layout(xaxis_type='log')
     if log_y:
-        fig.update_layout(yaxis_type='log')
+         fig.update_layout(yaxis_type='log')
     fig.update_layout(margin=dict(t=40, b=40, l=40, r=40))
     return fig
 
